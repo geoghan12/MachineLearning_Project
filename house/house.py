@@ -35,6 +35,9 @@ class House():
     def test(self):
         return(self.all[self.all['test']])
 
+    def sg_split(self):
+        print(self.shape)
+
     def log_transform(self, variable):
         plt.figure(figsize=(10,5))
         plt.subplot(1,2,1)
@@ -45,7 +48,8 @@ class House():
         plt.title('Log transformed')
         plt.tight_layout()
 
-    def corr_matrix(self, data, column_estimate, k=10, cols_pair=['SalePrice', 'OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF', '1stFlrSF', 'FullBath', 'TotRmsAbvGrd', 'YearBuilt']):
+    def corr_matrix(self, data, column_estimate, k=10, cols_pair=['SalePrice', 'OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea',
+     'TotalBsmtSF', '1stFlrSF', 'FullBath', 'TotRmsAbvGrd', 'YearBuilt']):
         corr_matrix = data.corr()
         sns.set(rc={'axes.facecolor':'white', 'figure.facecolor':'white'})
         f, ax = plt.subplots(figsize=(12, 9))
@@ -56,7 +60,8 @@ class House():
         cm = np.corrcoef(data[cols].values.T)
         sns.set(font_scale=1.25)
         f, ax = plt.subplots(figsize=(12, 9))
-        hm = sns.heatmap(cm, cbar=True, cmap='coolwarm', annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=cols.values, xticklabels=cols.values)
+        hm = sns.heatmap(cm, cbar=True, cmap='coolwarm', annot=True, square=True, fmt='.2f', annot_kws={'size': 10},
+         yticklabels=cols.values, xticklabels=cols.values)
         plt.show()
         plt.figure()
 
@@ -179,7 +184,8 @@ class House():
                 self.all.loc[self.all['GarageYrBlt'].isnull(),'GarageYrBlt'] = self.all['YearBuilt'].loc[missing_grage_yr]
 
             elif column in mode:
-                self.all[column] = [self.all[column].mode() if pd.isnull(x) else x for x in self.all[column]]
+                # in case of function messing up - remove [0]
+                self.all[column] = [self.all[column].mode()[0] if pd.isnull(x) else x for x in self.all[column]]
             elif column in mean:
                 self.all[column].fillna(self.all[column].mean(),inplace=True)
             elif column in NoneOrZero:
@@ -200,8 +206,8 @@ class House():
 
     def engineer_features(self, house_config):
         # General Dummification
-        categorical_columns = [x for x in self.train().columns if self.train()[x].dtype == 'object' ]
-        non_categorical_columns = [x for x in self.train().columns if self.train()[x].dtype != 'object' ]
+        categorical_columns = [x for x in self.all.columns if self.all[x].dtype == 'object' ]
+        non_categorical_columns = [x for x in self.all.columns if self.all[x].dtype != 'object' ]
 
         # TBD: do something with ordinals!!!!!
         for column in categorical_columns:
@@ -213,73 +219,46 @@ class House():
             #print( "Column " + column + " now has these unique values " + ' '.join(self.all[column].unique()))
 
         use_columns = non_categorical_columns + non_categorical_columns
-        self.dummy_train = pd.get_dummies(self.train()[use_columns], drop_first=True, dummy_na=True)
+        self.dummy_train = pd.get_dummies(self.all[use_columns], drop_first=True, dummy_na=True)
 
     def sg_ordinals(self):
         # general ordinal columns
-        self.ord_df=self.train().copy()
         ord_cols = ['ExterQual', 'ExterCond','BsmtCond','HeatingQC', 'KitchenQual',
-                   'FireplaceQu', 'GarageQual', 'GarageCond', 'PoolQC']
+                   'FireplaceQu']
         ord_dic = {'Ex': 5, 'Gd': 4, 'TA': 3, 'Fa':2, 'Po':1}
         for col in ord_cols:
-            self.ord_df[col] = self.ord_df[col].map(lambda x: ord_dic.get(x, 0))
-        functional_dic = {'Typ':8, 'Min1':7,'Min2': 6,'Mod':5, 'Maj1':4,'Maj2':3,'Sev':2,'Sal':1}
-        self.ord_df['Functional'] = self.ord_df['Functional'].map(lambda x: functional_dic.get(x, 0))
-        GarageFinish = {'Fin': 1, 'RFn': 2, 'Unf': 3, 'None':4}
-        self.ord_df['GarageFinish'] = self.ord_df['GarageFinish'].map(lambda x: GarageFinish.get(x, 0))
+            self.all[col] = self.all[col].apply(lambda x: ord_dic.get(x, 0))
 
-    def sg_test_train_split(self,data_type):
-        if data_type=="label_df":
-            x=self.label_df
-        elif data_type=='dummy':
-            x=self.dummy_train
-        y=self.train().SalePrice
-        try:
-            self.x_train
-        except:
-            print('DOING SPLITS!!!!')
-            self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(x,y)
+        #Different Ordinal columns
+        GarageQual_dic = {'Ex': 1, 'Gd': 2, 'TA': 3,'Fa': 4, 'Po': 5,'None':6}
+        functional_dic = {'Typ':8, 'Min1':7,'Min2': 6,'Mod':5, 'Maj1':4,'Maj2':3,'Sev':2,'Sal':1}
+        GarageFinish_dic = {'Fin': 1, 'RFn': 2, 'Unf': 3, 'None':4}
+        GarageCond_dic = {'Ex': 1, 'Gd': 2, 'TA': 3,'Fa': 4, 'Po': 5,'None':6}
+        PoolQC_dic = {'Ex': 1, 'Gd': 2, 'TA': 3,'Fa': 4, 'Na': 5, 'None':5}
+
+        self.all['GarageFinish'] = self.all['GarageFinish'].apply(lambda x: GarageFinish_dic.get(x, 0))
+        self.all['Functional'] = self.all['Functional'].apply(lambda x: functional_dic.get(x, 0))
+        self.all['GarageQual'] = self.all['GarageQual'].apply(lambda x: GarageQual_dic.get(x, 0))
+        self.all['GarageCond'] = self.all['GarageCond'].apply(lambda x: GarageCond_dic.get(x, 0))
+        self.all['PoolQC'] = self.all['PoolQC'].apply(lambda x: PoolQC_dic.get(x, 0))
 
     def sg_skewness(self,mut=0): # mut=0 will not log transform, mut =1 will
+    # inspects training data but computes log transform on all the data
         skewness = self.train().select_dtypes(exclude = ["object"]).apply(lambda x: skew(x))
         skewness = skewness[abs(skewness) > 0.5]
         print(str(skewness.shape[0]) + " skewed numerical features to log transform")
         skewed_features = skewness.index
         if mut==1:
-            self.train()[skewed_features] = np.log1p(self.train()[skewed_features])
+            self.all[skewed_features] = np.log1p(self.all[skewed_features])
         self.skewed_features=skewness.index
         print(skewed_features)
 
-    def sg_random_forest(self,num_est=500,data_type='dummy'):
-        self.sg_test_train_split(data_type=data_type)
-
-        model_rf = RandomForestRegressor(n_estimators=num_est, n_jobs=-1)
-        model_rf.fit(self.x_train, self.y_train)
-        rf_pred = model_rf.predict(self.x_test)
-
-        plt.figure(figsize=(10, 5))
-        plt.scatter(self.y_test, rf_pred, s=20)
-        plt.title('Predicted vs. Actual')
-        plt.xlabel('Actual Sale Price')
-        plt.ylabel('Predicted Sale Price')
-
-        plt.plot([min(self.y_test), max(self.y_test)], [min(self.y_test), max(self.y_test)])
-        plt.tight_layout()
-
-        model_rf.fit(self.x_train, self.y_train)
-        rf_pred_log = model_rf.predict(self.x_test)
-
-        print(self.rmse_cv(model_rf, self.x_train, self.y_train))
-
     def label_encode_engineer(self):
-        # must be called AFTER sg_ordinals
         lce = LabelCountEncoder()
-        self.label_df = self.ord_df.copy()
-
-        for c in self.train().columns:
-            if self.label_df[c].dtype == 'object':
+        for c in self.all.columns:
+            if self.all[c].dtype == 'object':
                 lce = LabelCountEncoder()
-                self.label_df[c] = lce.fit_transform(self.label_df[c])
+                self.all[c] = lce.fit_transform(self.all[c])
 
     def sale_price_charts(self):
         for i, column in enumerate(self.all.columns):
@@ -302,15 +281,15 @@ class House():
 
 
     def statsmodel_linear_regression(self,y=['SalePrice'], X=['GrLivArea']):
-        x = sm.add_constant(self.train()[X])
-        y = self.train()[y]
+        x = sm.add_constant(self.all[X])
+        y = self.all[y]
         model = sm.OLS(y,x)
         results = model.fit()
         print(results.summary())
 
 
     def test_train_split(self):
-        x=self.dummy_train
+        x=self.train().drop('SalePrice',axis=1)
         y=self.train().SalePrice
         try:
             self.x_train
