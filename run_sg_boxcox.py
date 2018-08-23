@@ -24,6 +24,7 @@ house.all.drop(['Fireplaces','FireplaceQu'],axis=1,inplace=True)
 
 maybe_drop=['3SsnPorch', 'BsmtFinSF2']
 house.all.drop(maybe_drop,axis=1,inplace=True)
+
 perform_log=['BsmtFinSF1',
        'BsmtUnfSF', 'EnclosedPorch', 'GarageYrBlt', 'GrLivArea', 'HalfBath',
        'LotArea', 'LotFrontage', 'LowQualFinSF', 'MSSubClass', 'MasVnrArea',
@@ -33,8 +34,12 @@ house.sg_skewness(mut=0)
 for feat in house.skewed_features:
     house.log_transform(house.train()[feat])
 
-house.all[perform_log] = np.log1p(house.all[perform_log])
-house.train()['SalePrice'] = np.log1p(house.train()['SalePrice'])
+
+from scipy.special import boxcox1p
+lam = 0.15
+house.all[perform_log] = boxcox1p(house.all[perform_log],lam)
+house.train()['SalePrice'] = boxcox1p(house.train()['SalePrice'],lam)
+
 
 house.sg_ordinals()
 house.label_encode_engineer()
@@ -43,11 +48,4 @@ house.sg_statsmodels()
 
 house.sk_random_forest(num_est=500)
 
-# import pandas as pd
-# id=np.arange(1461,2920)
-# results=[[id],[house.model_prediction]]
-
-# results=zip(id,house.model_prediction)
-# list(results)
-# resultsPD=pd.DataFrame(id,house.model_prediction,columns=['Id','SalePrice'])
-# resultsPD
+# house.model_prediction

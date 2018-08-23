@@ -7,7 +7,7 @@ import numpy as np
 
 from house import *
 from config import *
-from config2 import *
+
 del house
 house = House('data/train.csv','data/test.csv')
 

@@ -254,7 +254,7 @@ class House():
 
     def sg_skewness(self,mut=0): # mut=0 will not log transform, mut =1 will
     # inspects training data but computes log transform on all the data
-        skewness = self.train().select_dtypes(exclude = ["object"]).apply(lambda x: skew(x))
+        skewness = self.train().drop('SalePrice',axis=1).select_dtypes(exclude = ["object"]).apply(lambda x: skew(x))
         skewness = skewness[abs(skewness) > 0.5]
         print(str(skewness.shape[0]) + " skewed numerical features to log transform")
         skewed_features = skewness.index
@@ -318,7 +318,7 @@ class House():
 
         print('RMSLE from Kaggle: '+str(self.rmsle(y_pred=rf_pred,y_test=self.y_test)))
         print('RMSE from Elsa: ' + str(self.rmse_cv(model_rf, self.x_train, self.y_train)))
-
+        self.model_prediction=rf_pred
 
     def sg_simpleLM(self):
         self.test_train_split()
@@ -368,7 +368,10 @@ class House():
 ### HELPER FUNCTIONS ###
     def save_results(self,model_name,rmse):
         self.results_dict[model_name]=rmse
-
+    def save_kaggle(self,prediction):
+        id=range(len(prediction))
+        results=pd.DataFrame(id,prediction)
+        results.to_csv('Results.csv')
     def rmse_cv(self,model, x, y, k=5):
         rmse = np.sqrt(-cross_val_score(model, x, y, scoring="neg_mean_squared_log_error", cv = k))
         return(np.mean(rmse))
