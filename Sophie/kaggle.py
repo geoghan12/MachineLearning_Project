@@ -1,5 +1,9 @@
 # stuff I found interesting on Kaggle:
 
+# Feature engineering:
+all_data['TotalSF'] = all_data['TotalBsmtSF'] + all_data['1stFlrSF'] + all_data['2ndFlrSF']
+
+
 # This would order all qualitative variables by mean SalePrice
 def encode(frame, feature):
     ordering = pd.DataFrame()
@@ -21,6 +25,12 @@ print(qual_encoded)
 
 
 # %% if we wanted to change some parameters to binaries
+change_binary=['TotalBsmtSF','GarageArea','2ndFlrSF','MasVnrArea','WoodDeckSF','OpenPorchSF','PoolArea']
+
+for var in change_binary:
+    house.all[var+'_B']=house.all[var].apply(lambda x: 1 if x > 0 else 0)
+    house.all.drop([var],axis=1)
+
 train['HasBasement'] = train['TotalBsmtSF'].apply(lambda x: 1 if x > 0 else 0)
 train['HasGarage'] = train['GarageArea'].apply(lambda x: 1 if x > 0 else 0)
 train['Has2ndFloor'] = train['2ndFlrSF'].apply(lambda x: 1 if x > 0 else 0)

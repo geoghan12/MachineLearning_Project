@@ -7,12 +7,13 @@ import matplotlib.pyplot as plt
 #Sophie's additions
 from LabelClass import LabelCountEncoder
 from scipy.stats import skew
+from sklearn import linear_model
 
 from statsmodels.formula.api import ols
 import statsmodels.api as sm
 from  statsmodels.genmod import generalized_linear_model
 
-#import missingno as msno
+import missingno as msno
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
@@ -28,7 +29,7 @@ class House():
         self.all = pd.concat([train,test], ignore_index=True)
         self.all['test'] = self.all.SalePrice.isnull()
         self.all.drop('Id', axis=1, inplace=True)
-
+        self.results_dict={}
     def train(self):
         return(self.all[~self.all['test']])
 
@@ -171,8 +172,7 @@ class House():
         columns_with_missing_data.remove('SalePrice')
         for column in columns_with_missing_data:
             col_data = self.all[column]
-            print( 'Cleaning ' + str(np.sum(col_data.isnull())) + ' data entries for column: ' + column )
-
+            #print( 'Cleaning ' + str(np.sum(col_data.isnull())) + ' data entries for column: ' + column )
         #log transformation for missing LotFrontage
             if  column=='LotFrontage':
                 y1=np.log(self.all['LotArea'])
@@ -197,12 +197,16 @@ class House():
             else:
                 print( 'Uh oh!!! No cleaning strategy for:' + column )
 
+    # def convert_types(self, columns_to_convert):
+    #     for column, type in columns_to_convert:
+    #         print("assigning " + column + " as type " + type)
+    #         self.all[column] = self.all[column].astype(type)
 
-    def convert_types(self, columns_to_convert):
-        for column, type in columns_to_convert:
-            print("assigning " + column + " as type " + type)
-            self.all[column] = self.all[column].astype(type)
-
+    def convert_types(self, house_config):
+        for house_variable_name, house_variable_value in house_config.items():
+            if len(house_variable_value['dtype']) != 0:
+                print("assigning " + house_variable_name + " as type " + house_variable_value['dtype'])
+                self.all[house_variable_name] = self.all[house_variable_name].astype(house_variable_value['dtype'])
 
     def engineer_features(self, house_config):
         # General Dummification
@@ -227,20 +231,26 @@ class House():
                    'FireplaceQu']
         ord_dic = {'Ex': 5, 'Gd': 4, 'TA': 3, 'Fa':2, 'Po':1}
         for col in ord_cols:
-            self.all[col] = self.all[col].apply(lambda x: ord_dic.get(x, 0))
-
+            try:
+                self.all[col] = self.all[col].apply(lambda x: ord_dic.get(x, 0))
+            except:
+                pass
         #Different Ordinal columns
         GarageQual_dic = {'Ex': 1, 'Gd': 2, 'TA': 3,'Fa': 4, 'Po': 5,'None':6}
         functional_dic = {'Typ':8, 'Min1':7,'Min2': 6,'Mod':5, 'Maj1':4,'Maj2':3,'Sev':2,'Sal':1}
         GarageFinish_dic = {'Fin': 1, 'RFn': 2, 'Unf': 3, 'None':4}
         GarageCond_dic = {'Ex': 1, 'Gd': 2, 'TA': 3,'Fa': 4, 'Po': 5,'None':6}
         PoolQC_dic = {'Ex': 1, 'Gd': 2, 'TA': 3,'Fa': 4, 'Na': 5, 'None':5}
-
-        self.all['GarageFinish'] = self.all['GarageFinish'].apply(lambda x: GarageFinish_dic.get(x, 0))
-        self.all['Functional'] = self.all['Functional'].apply(lambda x: functional_dic.get(x, 0))
-        self.all['GarageQual'] = self.all['GarageQual'].apply(lambda x: GarageQual_dic.get(x, 0))
-        self.all['GarageCond'] = self.all['GarageCond'].apply(lambda x: GarageCond_dic.get(x, 0))
-        self.all['PoolQC'] = self.all['PoolQC'].apply(lambda x: PoolQC_dic.get(x, 0))
+        Utilities_dic = {'AllPub':1,'NoSewr':2,'NoSeWa':3,'ELO':4}
+        try:
+            self.all['Utilities'] = self.all['Utilities'].apply(lambda x: Utilities_dic.get(x,0))
+            self.all['GarageFinish'] = self.all['GarageFinish'].apply(lambda x: GarageFinish_dic.get(x, 0))
+            self.all['Functional'] = self.all['Functional'].apply(lambda x: functional_dic.get(x, 0))
+            self.all['GarageQual'] = self.all['GarageQual'].apply(lambda x: GarageQual_dic.get(x, 0))
+            self.all['GarageCond'] = self.all['GarageCond'].apply(lambda x: GarageCond_dic.get(x, 0))
+            self.all['PoolQC'] = self.all['PoolQC'].apply(lambda x: PoolQC_dic.get(x, 0))
+        except:
+            pass
 
     def sg_skewness(self,mut=0): # mut=0 will not log transform, mut =1 will
     # inspects training data but computes log transform on all the data
@@ -275,11 +285,6 @@ class House():
                 fig = sns.boxplot(x=var, y="SalePrice", data=data)
                 fig.axis(ymin=0, ymax=800000)
 
-    def rmse_cv(self,model, x, y, k=5):
-        rmse = np.sqrt(-cross_val_score(model, x, y, scoring="neg_mean_squared_log_error", cv = k))
-        return(np.mean(rmse))
-
-
     def statsmodel_linear_regression(self,y=['SalePrice'], X=['GrLivArea']):
         x = sm.add_constant(self.all[X])
         y = self.all[y]
@@ -289,7 +294,7 @@ class House():
 
 
     def test_train_split(self):
-        x=self.train().drop('SalePrice',axis=1)
+        x=self.train().drop(['SalePrice','test'],axis=1)
         y=self.train().SalePrice
         try:
             self.x_train
@@ -297,6 +302,7 @@ class House():
             print('DOING SPLITS!!!!')
             self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(x,y)
 
+### MODELS ###
 
     def sk_random_forest(self,num_est=500):
         self.test_train_split()
@@ -305,16 +311,77 @@ class House():
         model_rf.fit(self.x_train, self.y_train)
         rf_pred = model_rf.predict(self.x_test)
 
-        plt.figure(figsize=(10, 5))
-        plt.scatter(self.y_test, rf_pred, s=20)
-        plt.title('Predicted vs. Actual')
-        plt.xlabel('Actual Sale Price')
-        plt.ylabel('Predicted Sale Price')
-
-        plt.plot([min(self.y_test), max(self.y_test)], [min(self.y_test), max(self.y_test)])
-        plt.tight_layout()
+        self.plot_results(rf_pred)
 
         model_rf.fit(self.x_train, self.y_train)
         rf_pred_log = model_rf.predict(self.x_test)
 
-        print(self.rmse_cv(model_rf, self.x_train, self.y_train))
+        print('RMSLE from Kaggle: '+str(self.rmsle(y_pred=rf_pred,y_test=self.y_test)))
+        print('RMSE from Elsa: ' + str(self.rmse_cv(model_rf, self.x_train, self.y_train)))
+
+
+    def sg_simpleLM(self):
+        self.test_train_split()
+
+        x = np.asarray(self.x_train)
+        # x = sm.add_constant(x)
+        ols = linear_model.LinearRegression()
+        # ols = sm.OLS(np.asarray(self.y_train),)
+        model = ols.fit(x,np.asarray(self.y_train))#.reshape(-1,1)
+
+        sm_model_pred=model.predict(self.x_test)
+        self.plot_results(sm_model_pred)
+        print('RMSLE from Kaggle: '+str(self.rmsle(y_pred=sm_model_pred,y_test=self.y_test)))
+        print(self.rmse_cv(model, self.x_train, self.y_train))
+        self.results_dict['simpleLM']=self.rmse_cv(model, self.x_train, self.y_train)
+
+    def sg_statsmodels(self):
+        """gives a good summary of coefficients"""
+        self.test_train_split()
+
+        x = np.asarray(self.x_train)
+        x = sm.add_constant(x)
+
+        model = sm.OLS(self.y_train, x)
+        results = model.fit()
+        print(results.summary())
+
+    def elastic_search(self):
+        """performs an elastic search.
+        Does NOT work with CV for some reason
+        """
+        self.test_train_split()
+        #
+        alphas=[0.0001, 0.0005, 0.001, 0.01, 0.1, 1, 10]
+        l1_ratio=[.01, .1, .5, .9, .99]
+        max_iter=5000
+
+        ENSTest = linear_model.ElasticNetCV(alphas, l1_ratio, max_iter)
+        ENSTest.fit(self.x_train, self.y_train)
+        elast_pred = ENSTest.predict(self.x_test)
+
+        self.plot_results(elast_pred)
+        print('RMSLE from Kaggle: '+str(self.rmsle(y_pred=elast_pred,y_test=self.y_test)))
+        print(self.rmse_cv(ENSTest, self.x_train, self.y_train))
+        self.results_dict['elastic_search']=self.rmse_cv(ENSTest, self.x_train, self.y_train)
+
+### HELPER FUNCTIONS ###
+    def save_results(self,model_name,rmse):
+        self.results_dict[model_name]=rmse
+
+    def rmse_cv(self,model, x, y, k=5):
+        rmse = np.sqrt(-cross_val_score(model, x, y, scoring="neg_mean_squared_log_error", cv = k))
+        return(np.mean(rmse))
+
+    def rmsle(self,y_pred, y_test) :
+        assert len(y_test) == len(y_pred)
+        return np.sqrt(np.mean((np.log1p(y_pred) - np.log1p(y_test))**2))
+
+    def plot_results(self,prediction):
+        plt.figure(figsize=(10, 5))
+        plt.scatter(self.y_test, prediction, s=20)
+        plt.title('Predicted vs. Actual')
+        plt.xlabel('Actual Sale Price')
+        plt.ylabel('Predicted Sale Price')
+        plt.plot([min(self.y_test), max(self.y_test)], [min(self.y_test), max(self.y_test)])
+        plt.tight_layout()

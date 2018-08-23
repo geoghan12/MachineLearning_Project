@@ -10,10 +10,8 @@ del house
 house = House('data/train.csv','data/test.csv')
 # %%
 
-<<<<<<< Updated upstream
-=======
 house.testmethod()
->>>>>>> Stashed changes
+
 
 ##EDA:
 #All variables:
@@ -24,12 +22,6 @@ house.all.dtypes
 house.test().shape
 house.train().shape
 
-<<<<<<< Updated upstream
-
-
-
-=======
->>>>>>> Stashed changes
 #Response varriable:
 house.train().SalePrice.describe()
 house.log_transform(house.train().SalePrice)
