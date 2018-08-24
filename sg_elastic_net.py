@@ -38,19 +38,23 @@ def rmsle(y_pred, y_test) :
 
 house.cleanRP()
 
-house.all['TotalSF'] = house.all['TotalBsmtSF'] + house.all['1stFlrSF'] + house.all['2ndFlrSF']
-house.all.drop(['TotalBsmtSF','1stFlrSF','2ndFlrSF'],axis=1,inplace=True)
+# house.all['TotalSF'] = house.all['TotalBsmtSF'] + house.all['1stFlrSF'] + house.all['2ndFlrSF']
+# house.all.drop(['TotalBsmtSF','1stFlrSF','2ndFlrSF'],axis=1,inplace=True)
 
 perform_log=['BsmtFinSF1','BsmtUnfSF', 'EnclosedPorch', 'GarageYrBlt', 'GrLivArea',
     'HalfBath', 'LotArea', 'LotFrontage', 'LowQualFinSF', 'MSSubClass', 'MasVnrArea',
         'OpenPorchSF', 'OverallCond', 'PoolArea', 'ScreenPorch',
        'TotRmsAbvGrd', 'WoodDeckSF', 'TotalSF']
-house.all[perform_log] = np.log1p(house.all[perform_log]+1)
+# house.all[perform_log] = np.log1p(house.all[perform_log]+1)
 house.train()['SalePrice'] = np.log1p(house.train()['SalePrice']+1)
 
-house.sg_ordinals()
-house.label_encode_engineer()
-house.all.to_csv('SophiePipeline1.csv')
+house.engineer_features(HOUSE_CONFIG)
+
+# house.sg_ordinals()
+# house.label_encode_engineer()
+# house.all.to_csv('SophiePipeline1.csv')
+
+house.sm_addFeatures()
 
 # %% Elastic Search
 x=house.train().drop(['SalePrice','test'],axis=1)

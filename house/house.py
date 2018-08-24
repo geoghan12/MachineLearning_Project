@@ -252,6 +252,34 @@ class House():
         except:
             pass
 
+    def sm_addFeatures_corr(self):
+        # self.all['FireplaceScore'] = self.all['Fireplaces'] * self.all['FireplaceQu']
+        # self.all['TotalBath'] = self.all['BsmtFullBath'] + (0.5 * self.all['BsmtHalfBath']) + self.all['FullBath'] + (0.5 * self.all['HalfBath'])
+        self.all['AllSF'] = self.all['GrLivArea'] + self.all['TotalBsmtSF'] + self.all['1stFlrSF'] + self.all['2ndFlrSF']
+
+        self.all.drop(['GrLivArea', 'TotalBsmtSF', '1stFlrSF', '2ndFlrSF'],axis = 1,inplace=True)
+        # self.all.drop(['Fireplaces', 'FireplaceQu', 'BsmtFullBath', 'BsmtHalfBath',
+        # 'FullBath', 'HalfBath', 'GrLivArea', 'TotalBsmtSF', '1stFlrSF', '2ndFlrSF'],axis = 1,inplace=True)
+
+    def sm_addFeatures(self):
+        self.all['OverallGrade'] = self.all['OverallQual'] * self.all['OverallCond']
+        self.all['GarageGrade'] = self.all['GarageQual'] * self.all['GarageCond']
+        self.all['ExterGrade'] = self.all['ExterQual'] * self.all['ExterCond']
+        self.all['KitchenScore'] = self.all['KitchenAbvGr'] * self.all['KitchenQual']
+        self.all['FireplaceScore'] = self.all['Fireplaces'] * self.all['FireplaceQu']
+        self.all['GarageScore'] = self.all['GarageArea'] * self.all['GarageQual']
+        self.all['PoolScore'] = self.all['PoolArea'] * self.all['PoolQC']
+        self.all['TotalBath'] = self.all['BsmtFullBath'] + (0.5 * self.all['BsmtHalfBath']) + self.all['FullBath'] + (0.5 * self.all['HalfBath'])
+        self.all['AllSF'] = self.all['GrLivArea'] + self.all['TotalBsmtSF'] + self.all['1stFlrSF'] + self.all['2ndFlrSF']
+        self.all['AllPorchSF'] = self.all['3SsnPorch'] + self.all['OpenPorchSF'] + self.all['EnclosedPorch'] + self.all['ScreenPorch']
+
+        self.all.drop(['OverallQual','OverallCond', 'GarageQual', 'GarageCond', 'ExterQual',
+        'ExterCond','KitchenAbvGr', 'KitchenQual', 'Fireplaces', 'FireplaceQu', 'GarageArea', 'GarageQual',
+        'PoolArea', 'PoolQC', 'ExterQual', 'ExterCond', 'PoolArea', 'PoolQC', 'BsmtFullBath', 'BsmtHalfBath',
+        'FullBath', 'HalfBath', 'GrLivArea', 'TotalBsmtSF', '1stFlrSF', '2ndFlrSF', '3SsnPorch', 'OpenPorchSF',
+        'EnclosedPorch', 'ScreenPorch'],axis = 1,inplace=True)
+
+
     def sg_skewness(self,mut=0): # mut=0 will not log transform, mut =1 will
     # inspects training data but computes log transform on all the data
         skewness = self.train().drop('SalePrice',axis=1).select_dtypes(exclude = ["object"]).apply(lambda x: skew(x))
@@ -372,6 +400,7 @@ class House():
         id=range(len(prediction))
         results=pd.DataFrame(id,prediction)
         results.to_csv('Results.csv')
+
     def rmse_cv(self,model, x, y, k=5):
         rmse = np.sqrt(-cross_val_score(model, x, y, scoring="neg_mean_squared_log_error", cv = k))
         return(np.mean(rmse))

@@ -30,6 +30,8 @@ perform_log=['BsmtFinSF1',
         'OpenPorchSF', 'OverallCond', 'PoolArea', 'ScreenPorch',
        'TotRmsAbvGrd', 'WoodDeckSF', 'TotalSF']
 house.sg_skewness(mut=0)
+house.skewed_features
+
 for feat in house.skewed_features:
     house.log_transform(house.train()[feat])
 
@@ -39,7 +41,7 @@ house.train()['SalePrice'] = np.log1p(house.train()['SalePrice'])
 house.sg_ordinals()
 house.label_encode_engineer()
 
-house.sg_statsmodels()
+# house.sg_statsmodels()
 
 house.sk_random_forest(num_est=500)
 
